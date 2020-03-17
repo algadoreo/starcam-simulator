@@ -1,0 +1,5 @@
+# output files
+*.png
+
+# OS junk files
+*.DS_Store
