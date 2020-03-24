@@ -7,6 +7,23 @@ import astropy.coordinates as coord
 import astropy.units as u
 from astroquery.vizier import Vizier
 
+def s2x_Gnomonic(mu, obj_coords, cen_coords=(0*u.deg, 90*u.deg)):
+    if len(obj_coords) != 2:
+        raise RuntimeError("Object coordinates must be of length 2")
+    elif len(cen_coords) != 2:
+        raise RuntimeError("Reference coordinates must be of length 2")
+
+    ra  = np.deg2rad(obj_coords[0]); de  = np.deg2rad(obj_coords[1])
+    ra0 = np.deg2rad(cen_coords[0]); de0 = np.deg2rad(cen_coords[1])
+
+    A = np.cos(de) * np.cos(ra - ra0)
+    F = 180.*u.deg/np.pi * 1./(mu.to(u.deg/u.pixel) * ( np.sin(de0) * np.sin(de) + A * np.cos(de0) ))
+
+    x = -F * np.cos(de) * np.sin(ra - ra0)
+    y = -F * ( np.cos(de0) * np.sin(de) - A * np.sin(de0) )
+
+    return x.to(u.pixel).value, y.to(u.pixel).value
+
 # Default values: SuperBIT scicam
 ccd_pix_size = 5.5 * u.micrometer
 focal_length = 5.5 * u.meter
@@ -44,16 +61,9 @@ query = v.query_region(coord.SkyCoord(ra=cent_ra, dec=cent_dec, unit=(u.deg, u.d
 data = query[0]
 print(data['_RAJ2000', '_DEJ2000', 'BPmag', 'e_BPmag', 'FBP', 'e_FBP'])
 
-# Find coordinates of first pixel
-# If the number of pixels per row/col is odd, the coordinate lies in the centre of pixel;
-# if it is even, the coordinate is at the upper/left pixel boundary
-xmin = cent_ra*u.deg - (active_pixels_x - (active_pixels_x.value % 2 == 1)*u.pixel)/2 * plate_scale
-ymin = cent_dec*u.deg - (active_pixels_y - (active_pixels_y.value % 2 == 1)*u.pixel)/2 * plate_scale
-
-# Convert all RA/Dec to pixel coordinates
-ra_idx = (((data['_RAJ2000'] - xmin.value)*u.deg / plate_scale).to(u.pixel)).value
-de_idx = (((data['_DEJ2000'] - ymin.value)*u.deg / plate_scale).to(u.pixel)).value
-coords_idx = np.array([ra_idx, de_idx]).T
+coords_idx = np.array([s2x_Gnomonic(plate_scale.to(u.deg/u.pixel), obj_coords, cen_coords=(cent_ra, cent_dec)) for obj_coords in data['RA_ICRS', 'DE_ICRS']])
+coords_idx[:,0] = np.array(coords_idx[:,0] + active_pixels_x.value/2, dtype=int)
+coords_idx[:,1] = np.array(coords_idx[:,1] + active_pixels_y.value/2, dtype=int)
 
 # Initialize image array
 img = np.zeros((int(active_pixels_y.value), int(active_pixels_x.value)))
@@ -64,14 +74,11 @@ for i, (ri, di) in enumerate(coords_idx):
         ri = int(ri); di = int(di)
         img[di:di+1, ri:ri+1] = data['FBP'][i]
 
-# RA/Dec coordinates start at bottom right of image, whereas matrix elements start at top left
-img_flip = np.flip(img, axis=(0,1))
-
 # Plot figure and save to disk
 fig = plt.figure(figsize=(active_pixels_x.value/100, active_pixels_y.value/100))
 ax = plt.Axes(fig, [0., 0., 1., 1.])
 ax.set_axis_off()
 fig.add_axes(ax)
-ax.imshow(img_flip, cmap='gray', vmax=5e5)
+ax.imshow(img, cmap='gray', vmax=5e5)
 plt.savefig('simage_001.png')
 plt.close()
