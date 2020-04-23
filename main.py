@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-import sys
+import argparse
 import numpy as np
 import matplotlib.pyplot as plt
 import astropy.coordinates as coord
@@ -24,25 +24,36 @@ def s2x_Gnomonic(mu, obj_coords, cen_coords=(0*u.deg, 90*u.deg)):
 
     return x.to(u.pixel).value, y.to(u.pixel).value
 
-# Default values: SuperBIT scicam
-ccd_pix_size = 5.5 * u.micrometer
-focal_length = 5.5 * u.meter
-plate_scale = (206265 * u.arcsecond) * (ccd_pix_size / u.pixel) / focal_length
-
-active_pixels_x = 6576 * u.pixel
-active_pixels_y = 4384 * u.pixel
-
 # Input parameters from user
-if len(sys.argv) not in [3, 4, 6]:
-    print("Usage: python main.py <RA> <Dec> [<Npix_x> <Npix_y>] [<plate_scale>]")
-    print("Units: RA and Dec in degrees; plate scale in arcsec/pixel")
-    sys.exit()
-elif len(sys.argv) == 4:
-    plate_scale = float(sys.argv[3]) * u.arcsec / u.pixel
-elif len(sys.argv) == 6:
-    plate_scale = float(sys.argv[5]) * u.arcsec / u.pixel
-    active_pixels_x = float(sys.argv[3]) * u.pixel
-    active_pixels_y = float(sys.argv[4]) * u.pixel
+parser = argparse.ArgumentParser()
+parser.add_argument("-c", dest='coords', nargs=2, type=float,
+                    default=[0., 0.],
+                    metavar=("RA", "DEC"),
+                    help="RA and Dec of image centre, in degrees (default: 0 0)")
+parser.add_argument("-n", dest='npix', nargs=2, type=int,
+                    default=[6576, 4384],  # from SuperBIT scicam
+                    metavar=("NPIX_X", "NPIX_Y"),
+                    help="size of image, in pixels (default: 6576 4384)")
+parser.add_argument("-p", dest='plate_scale', type=float,
+                    help="plate scale of image, in arcsec/pix (default: 0.206265)")
+parser.add_argument("-m", dest='max_mag',
+                    default="15",
+                    help="magnitude of dimmest star to plot (default: 15)")
+parser.add_argument("-f", dest='filename',
+                    default="simage.png",
+                    help="output file name (default: %(default)s)")
+argv = parser.parse_args()
+
+if argv.plate_scale == None:
+    # Default values: SuperBIT scicam
+    ccd_pix_size = 5.5 * u.micrometer
+    focal_length = 5.5 * u.meter
+    plate_scale = (206265 * u.arcsecond) * (ccd_pix_size / u.pixel) / focal_length
+else:
+    plate_scale = argv.plate_scale * u.arcsec / u.pixel
+
+active_pixels_x = argv.npix[0] * u.pixel
+active_pixels_y = argv.npix[1] * u.pixel
 
 fov_x = (active_pixels_x * plate_scale).to(u.deg)
 fov_y = (active_pixels_y * plate_scale).to(u.deg)
@@ -53,8 +64,8 @@ print('Plate scale: {}'.format(plate_scale))
 
 # Catalogue info
 cat = 'I/345/gaia2'
-cent_ra, cent_dec = float(sys.argv[1]), float(sys.argv[2])
-v = Vizier(columns = ['_RAJ2000', '_DEJ2000', 'BPmag', 'e_BPmag', '+FBP', 'e_FBP'], column_filters = {'BPmag': '<15'}, row_limit=-1)
+cent_ra, cent_dec = argv.coords[0], argv.coords[1]
+v = Vizier(columns = ['_RAJ2000', '_DEJ2000', 'BPmag', 'e_BPmag', '+FBP', 'e_FBP'], column_filters = {'BPmag': '<'+argv.max_mag}, row_limit=-1)
 
 # Extract rectangular region the side of fov_x times fov_y
 query = v.query_region(coord.SkyCoord(ra=cent_ra, dec=cent_dec, unit=(u.deg, u.deg), frame='icrs'), height=fov_y, width=fov_x, catalog=cat)
@@ -80,5 +91,5 @@ ax = plt.Axes(fig, [0., 0., 1., 1.])
 ax.set_axis_off()
 fig.add_axes(ax)
 ax.imshow(img, cmap='gray', vmax=5e5)
-plt.savefig('simage_001.png')
+plt.savefig(argv.filename)
 plt.close()
