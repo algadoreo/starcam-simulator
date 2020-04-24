@@ -6,23 +6,7 @@ import matplotlib.pyplot as plt
 import astropy.coordinates as coord
 import astropy.units as u
 from astroquery.vizier import Vizier
-
-def s2x_Gnomonic(mu, obj_coords, cen_coords=(0*u.deg, 90*u.deg)):
-    if len(obj_coords) != 2:
-        raise RuntimeError("Object coordinates must be of length 2")
-    elif len(cen_coords) != 2:
-        raise RuntimeError("Reference coordinates must be of length 2")
-
-    ra  = np.deg2rad(obj_coords[0]); de  = np.deg2rad(obj_coords[1])
-    ra0 = np.deg2rad(cen_coords[0]); de0 = np.deg2rad(cen_coords[1])
-
-    A = np.cos(de) * np.cos(ra - ra0)
-    F = 180.*u.deg/np.pi * 1./(mu.to(u.deg/u.pixel) * ( np.sin(de0) * np.sin(de) + A * np.cos(de0) ))
-
-    x = -F * np.cos(de) * np.sin(ra - ra0)
-    y = -F * ( np.cos(de0) * np.sin(de) - A * np.sin(de0) )
-
-    return x.to(u.pixel).value, y.to(u.pixel).value
+import projections as proj
 
 # Input parameters from user
 parser = argparse.ArgumentParser()
@@ -72,7 +56,7 @@ query = v.query_region(coord.SkyCoord(ra=cent_ra, dec=cent_dec, unit=(u.deg, u.d
 data = query[0]
 print(data['_RAJ2000', '_DEJ2000', 'BPmag', 'e_BPmag', 'FBP', 'e_FBP'])
 
-coords_idx = np.array([s2x_Gnomonic(plate_scale.to(u.deg/u.pixel), obj_coords, cen_coords=(cent_ra, cent_dec)) for obj_coords in data['RA_ICRS', 'DE_ICRS']])
+coords_idx = np.array([proj.s2x_Gnomonic(plate_scale.to(u.deg/u.pixel), obj_coords, cen_coords=(cent_ra, cent_dec)) for obj_coords in data['RA_ICRS', 'DE_ICRS']])
 coords_idx[:,0] = np.array(coords_idx[:,0] + active_pixels_x.value/2, dtype=int)
 coords_idx[:,1] = np.array(coords_idx[:,1] + active_pixels_y.value/2, dtype=int)
 
