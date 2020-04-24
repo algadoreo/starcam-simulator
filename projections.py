@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+"""
+Map projections to convert between sky (RA, Dec) and pixel coordinates.
+"""
+
 import numpy as np
 import astropy.units as u
 

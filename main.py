@@ -1,5 +1,9 @@
 #!/usr/bin/env python
 
+"""
+Retrieve objects from a catalogue and project them correctly onto an image.
+"""
+
 import argparse
 import numpy as np
 import matplotlib.pyplot as plt
