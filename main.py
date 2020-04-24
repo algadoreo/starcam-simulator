@@ -48,7 +48,7 @@ fov_y = (active_pixels_y * plate_scale).to(u.deg)
 
 print('Field of view in x axis: {} = {}'.format(fov_x, (fov_x).to(u.arcmin)))
 print('Field of view in y axis: {} = {}'.format(fov_y, (fov_y).to(u.arcmin)))
-print('Plate scale: {}'.format(plate_scale))
+print('Plate scale: {}'.format(plate_scale.to(u.arcsec/u.pixel)))
 
 # Catalogue info
 cat = 'I/345/gaia2'
