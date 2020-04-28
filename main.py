@@ -60,7 +60,7 @@ query = v.query_region(coord.SkyCoord(ra=cent_ra, dec=cent_dec, unit=(u.deg, u.d
 data = query[0]
 print(data['_RAJ2000', '_DEJ2000', 'BPmag', 'e_BPmag', 'FBP', 'e_FBP'])
 
-coords_idx = np.array([proj.s2x_Gnomonic(plate_scale.to(u.deg/u.pixel), obj_coords, cen_coords=(cent_ra, cent_dec)) for obj_coords in data['RA_ICRS', 'DE_ICRS']])
+coords_idx = np.array([proj.s2x_Gnomonic(plate_scale.to(u.deg/u.pixel), obj_coords, cen_coords=(cent_ra, cent_dec)) for obj_coords in data['_RAJ2000', '_DEJ2000']])
 coords_idx[:,0] = np.array(coords_idx[:,0] + active_pixels_x.value/2, dtype=int)
 coords_idx[:,1] = np.array(coords_idx[:,1] + active_pixels_y.value/2, dtype=int)
 
